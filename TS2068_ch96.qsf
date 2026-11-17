@@ -56,6 +56,12 @@ set_global_assignment -name SEED 1
 # Disable ALSA output: Chameleon96 has no ALSA (HPS SPI1) hookup. This drops
 # the spi atom and alsa.sv.
 set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_ALSA=1"
+# Cinta en la DDR3: 0x30000000 no existe en los 512 MB de la Chameleon96. Se usa el hueco
+# recomendado en el mapa de la ch96 (DDR_MAP.md): 0x1BC00000, libre en este core (no usa
+# MISTER_FB ni sdram_on_ddr). 8 MB (hasta 0x1C400000) sobran para cualquier cinta.
+set_global_assignment -name VERILOG_MACRO "TAPE_DDR_BASE=32'h1BC00000"
+set_global_assignment -name VERILOG_MACRO "TAPE_DDR_SIZE=32'h00800000"
+
 set_global_assignment -name SDC_FILE TS2068_ch96.sdc
 
 source sys/pins_ch96.tcl
