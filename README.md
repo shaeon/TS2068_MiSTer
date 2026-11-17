@@ -31,6 +31,8 @@ Documentation in Spanish: [README_es.md](README_es.md).
 | Remove cartridge | Takes the cartridge out and resets |
 | NMI | Same as F5 (esxDOS menu with the DivMMC) |
 
+Details of the tape player (formats, DDR3 address, timing): [docs/cinta.md](docs/cinta.md) (Spanish).
+
 ## Keys
 
 - **F5**: NMI · **F9**: reset.
