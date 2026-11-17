@@ -50,7 +50,7 @@ Details of the tape player (formats, DDR3 address, timing): [docs/cinta.md](docs
 | PAL / NTSC | The PLL is reconfigured on the fly (56.000 / 56.488 MHz), instead of two PLLs and a clock multiplexer as in `psd.v` |
 | Video | 512-pixel mode with the MiSTer scaler, scandoubler, HQ2x, scanlines, integer scaling |
 | Tape | TZX, TAP and PZX in the DDR3; generalized data blocks (0x19), loops; play/stop from the OSD; real-time speed in NTSC too |
-| Cartridges | The DCK header is decoded: DOCK, EXROM and HOME banks, AROS cartridges (chunks 4-7) and RAM chunks writable by the CPU |
+| Cartridges | DCK with or without header. The header is decoded: DOCK, EXROM and HOME banks, AROS cartridges (chunks 4-7) and RAM chunks writable by the CPU |
 | ROM | Optional, 16K or 24K (HOME + EXROM) |
 
 ## How it works
@@ -69,7 +69,9 @@ Details of the tape player (formats, DDR3 address, timing): [docs/cinta.md](docs
 - **Cartridges**: `rtl/dck_loader.sv`. hps_io does not send the file size, so
   instead of deciding from the size whether there is a header (as `psd.v`
   does), the 9-byte header is decoded while the file arrives, and each data
-  byte goes to its bank and chunk. Headerless images are not supported.
+  byte goes to its bank and chunk. Headerless images (a raw dump of the DOCK bank, e.g. a 64K
+  Manic Miner) are recognised because their first 9 bytes are not a valid header, and are loaded
+  from address 0 as in Kyp's core.
 - **Blanking**: `vdu.v` does not export it, so its counters are rebuilt at
   14 MHz (896 pixels per line) from hsync/vsync.
 - **Tape**: `rtl/tape_ddr.sv`, `rtl/tzxplayer.vhd` and `rtl/pzx_player.v` from

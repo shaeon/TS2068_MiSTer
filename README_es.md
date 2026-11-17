@@ -48,7 +48,7 @@ Detalles del reproductor de cinta (formatos, dirección en la DDR3, temporizaci�
 | PAL / NTSC | La PLL se reconfigura en caliente (56,000 / 56,488 MHz), en vez de dos PLL y un multiplexor de reloj como en `psd.v` |
 | Vídeo | Modo de 512 píxeles con el escalador de MiSTer, scandoubler, HQ2x, scanlines, escalado entero |
 | Cinta | TZX, TAP y PZX en la DDR3; bloques de datos generalizados (0x19), bucles; play/stop desde el OSD; velocidad real también en NTSC |
-| Cartuchos | Se interpreta la cabecera del DCK: bancos DOCK, EXROM y HOME, cartuchos AROS (trozos 4-7) y trozos de RAM que la CPU puede escribir |
+| Cartuchos | DCK con o sin cabecera. Se interpreta la cabecera: bancos DOCK, EXROM y HOME, cartuchos AROS (trozos 4-7) y trozos de RAM que la CPU puede escribir |
 | ROM | Opcional, de 16K o 24K (HOME + EXROM) |
 
 ## Cómo funciona
@@ -66,7 +66,9 @@ Detalles del reproductor de cinta (formatos, dirección en la DDR3, temporizaci�
 - **Cartuchos**: `rtl/dck_loader.sv`. hps_io no da el tamaño del fichero, así
   que en vez de decidir por el tamaño si hay cabecera (como `psd.v`) se
   interpreta la cabecera de 9 bytes conforme llega el fichero y cada byte de
-  datos va a su banco y su trozo. No admite imágenes sin cabecera.
+  datos va a su banco y su trozo. Las imágenes sin cabecera (volcado del banco DOCK tal cual,
+  p. ej. Manic Miner de 64K) se reconocen porque sus 9 primeros bytes no son una cabecera válida y
+  se cargan desde la dirección 0, como en el core de Kyp.
 - **Blanking**: `vdu.v` no lo exporta, así que se reconstruyen sus contadores a
   14 MHz (896 píxeles por línea) a partir de hsync/vsync.
 - **Cinta**: `rtl/tape_ddr.sv`, `rtl/tzxplayer.vhd` y `rtl/pzx_player.v` de
