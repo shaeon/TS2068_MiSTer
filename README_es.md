@@ -29,6 +29,8 @@ Port a MiSTer: Shaeon (Carlos Palmero).
 | Remove cartridge | Quita el cartucho y reinicia |
 | NMI | Igual que F5 (menú de esxDOS con la DivMMC) |
 
+Detalles del reproductor de cinta (formatos, dirección en la DDR3, temporización): [docs/cinta.md](docs/cinta.md).
+
 ## Teclas
 
 - **F5**: NMI · **F9**: reset.
