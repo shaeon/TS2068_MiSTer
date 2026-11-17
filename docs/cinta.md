@@ -9,7 +9,7 @@ Documento técnico de cómo funciona la cinta en el core **TS2068_MiSTer** (port
 
 - **La cinta no se copia en la memoria del TS2068.** El fichero se guarda entero en la
   **DDR3 de la placa DE10-Nano** (la memoria del ARM/HPS), a partir de la dirección física
-  **`0x3000_0000`**.
+  **`0x3000_0000`** (configurable para placas con menos memoria, ver 3.1).
 - Desde ahí, `tzxplayer` (o `pzx_player` para PZX) lo **reproduce como si fuera un casete**:
   genera la señal de audio EAR en tiempo real.
 - El Z80 lee esa señal por el **bit 6 del puerto `0xFE`**, igual que en la máquina real. Es la
@@ -58,22 +58,33 @@ Módulo: `rtl/tape_ddr.sv` (el mismo que en ZXP3_MiSTer).
 ### 3.1 Dirección
 
 ```verilog
-assign DDRAM_ADDR = { 4'b0011, ramA };   // ramA = dirección del byte [27:3]
+assign DDRAM_ADDR = BASE[31:3] + ramA;   // ramA = dirección del byte [27:3]
 ```
 
 - `DDRAM_ADDR` cuenta **palabras de 64 bits** (29 bits en total).
-- Los 4 bits altos `0011` sitúan la zona en la dirección de byte física **`0x3000_0000`**.
-  Es la zona de la DDR3 que el Linux de MiSTer deja reservada para los cores.
+- `BASE` vale por defecto **`0x3000_0000`** (dirección de byte física). Es la zona de la DDR3 que
+  el Linux de MiSTer deja reservada para los cores en la DE10-Nano (1 GB).
+- En placas con **menos memoria** (Chameleon96, 512 MB), `0x3000_0000` no existe: la escritura
+  acaba en otra parte de la RAM y la cinta no carga bien. En esas placas se dan la base y el
+  tamaño máximo con macros en el `.qsf`:
+
+```tcl
+set_global_assignment -name VERILOG_MACRO "TAPE_DDR_BASE=32'h1F000000"
+set_global_assignment -name VERILOG_MACRO "TAPE_DDR_SIZE=32'h00800000"
+```
+
+  La zona tiene que estar libre: ni Linux ni el escalador (`ascal`) pueden usarla. Lo que pase de
+  `TAPE_DDR_SIZE` no se escribe y la cinta termina ahí.
 - Un byte que está en la posición `offset` del fichero queda en:
 
 | | Valor |
 |---|---|
-| Dirección física del byte | `0x3000_0000 + offset` |
-| Palabra DDR (`DDRAM_ADDR`) | `0x0600_0000 + (offset >> 3)` |
+| Dirección física del byte | `BASE + offset` (`0x3000_0000 + offset` en la DE10-Nano) |
+| Palabra DDR (`DDRAM_ADDR`) | `BASE/8 + (offset >> 3)` (`0x0600_0000 + …` en la DE10-Nano) |
 | Byte dentro de la palabra | `offset & 7` (con `DDRAM_BE = 1 << (offset & 7)`) |
 
-- **Tamaño máximo**: `ioctl_addr` tiene 27 bits, así que el máximo son **128 MB**. Ninguna cinta se
-  acerca a eso.
+- **Tamaño máximo**: `ioctl_addr` tiene 27 bits, así que el máximo son **128 MB** (o
+  `TAPE_DDR_SIZE` si es menor). Ninguna cinta se acerca a eso: 8 MB sobran.
 
 ### 3.2 Escritura (al cargar desde el OSD)
 
