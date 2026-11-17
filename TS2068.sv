@@ -297,7 +297,22 @@ module emu
 	wire tapeWait;
 	wire tzxTape;
 
-	tape_ddr #(.MS(56000)) tape_ddr
+	// Zona de la DDR3 para la cinta: 0x30000000 en la DE10-Nano (1 GB). En placas con menos memoria
+	// (Chameleon96, 512 MB) hay que darla con macros en el .qsf, por ejemplo:
+	//   set_global_assignment -name VERILOG_MACRO "TAPE_DDR_BASE=32'h1F000000"
+	//   set_global_assignment -name VERILOG_MACRO "TAPE_DDR_SIZE=32'h00800000"
+`ifdef TAPE_DDR_BASE
+	localparam [31:0] TAPE_BASE = `TAPE_DDR_BASE;
+`else
+	localparam [31:0] TAPE_BASE = 32'h30000000;
+`endif
+`ifdef TAPE_DDR_SIZE
+	localparam [31:0] TAPE_SIZE = `TAPE_DDR_SIZE;
+`else
+	localparam [31:0] TAPE_SIZE = 32'h08000000;
+`endif
+
+	tape_ddr #(.MS(56000), .BASE(TAPE_BASE), .SIZE(TAPE_SIZE)) tape_ddr
 	(
 		.clock           (clock           ),
 		.ce              (tapeCe          ),

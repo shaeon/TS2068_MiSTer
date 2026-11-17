@@ -1,7 +1,8 @@
 //-------------------------------------------------------------------------------------------------
 // TS2068 para MiSTer (copiado de ZXP3_MiSTer) - reproductor TZX/TAP/PZX con el fichero en la DDR3 del HPS.
 // Equivalente al tzx.v de Kyp (que usa BRAM), pero en MiSTer no hay BRAM para un TZX de cientos
-// de KB, así que la cinta va a la DDR3 (zona del core, a partir de 0x30000000) y se lee byte a
+// de KB, así que la cinta va a la DDR3 (por defecto en la zona de los cores, 0x30000000; ver los
+// parámetros BASE y SIZE para placas con menos memoria, como la Chameleon96) y se lee byte a
 // byte con una caché de una palabra de 64 bits. El protocolo req/ack de tzxplayer permite esperar
 // a que llegue el dato, así que la latencia de la DDR3 no afecta.
 //
@@ -12,7 +13,11 @@
 module tape_ddr
 #(
 	parameter MS = 56000,               // ciclos de ce por milisegundo
-	parameter TS = 16                   // ciclos de reloj por T-estado (reproductor PZX)
+	parameter TS = 16,                  // ciclos de reloj por T-estado (reproductor PZX)
+	parameter [31:0] BASE = 32'h30000000, // dirección física (en bytes) de la cinta en la DDR3,
+	                                      // múltiplo de 8
+	parameter [31:0] SIZE = 32'h08000000  // tamaño máximo de la cinta en bytes (por defecto 128 MB);
+	                                      // lo que pase de ahí no se escribe
 )
 (
 	input  wire        clock,
@@ -54,7 +59,7 @@ module tape_ddr
 
 	assign DDRAM_CLK      = clock;
 	assign DDRAM_BURSTCNT = 8'd1;
-	assign DDRAM_ADDR     = { 4'b0011, ramA };
+	assign DDRAM_ADDR     = BASE[31:3] + { 4'b0000, ramA };
 	assign DDRAM_DIN      = ramD;
 	assign DDRAM_BE       = ramBE;
 	assign DDRAM_WE       = ramWE;
@@ -111,7 +116,7 @@ module tape_ddr
 
 		if(dl) begin
 			cacheV <= 1'b0;
-			if(dlW) begin
+			if(dlW && dlA < SIZE) begin
 				ramA   <= { 1'b0, dlA[26:3] };
 				ramD   <= {8{ dlD }};
 				ramBE  <= 8'd1 << dlA[2:0];
