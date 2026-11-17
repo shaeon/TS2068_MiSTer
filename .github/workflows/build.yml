@@ -4,6 +4,8 @@
 # Release con el .rbf.
 #
 # - push / pull request: compila y sube el resultado (pestana Actions).
+#   En la rama main compila TS2068 (DE10-Nano); en la rama ch96, TS2068_ch96
+#   (Chameleon96). Las etiquetas v* compilan TS2068.
 # - Lanzar a mano: Actions > Build > Run workflow.
 # - Release: git tag v1.0 && git push origin v1.0
 
@@ -11,13 +13,13 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, ch96]
     tags: ['v*']
     paths-ignore:
       - '**.md'
       - 'releases/**'
   pull_request:
-    branches: [main]
+    branches: [main, ch96]
     paths-ignore:
       - '**.md'
       - 'releases/**'
@@ -25,6 +27,10 @@ on:
 
 permissions:
   contents: write          # para crear la Release en las etiquetas v*
+
+# Revision de Quartus segun la rama (en un pull request, la rama de destino)
+env:
+  REV: ${{ (github.base_ref || github.ref_name) == 'ch96' && 'TS2068_ch96' || 'TS2068' }}
 
 jobs:
   build:
@@ -53,17 +59,17 @@ jobs:
       - name: Compilar
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE":/build -w /build raetro/quartus:17.0 \
-            quartus_sh --flow compile TS2068
+            quartus_sh --flow compile "$REV"
 
       # Resumen de tiempos en la pagina de la ejecucion; aviso si alguna
       # holgura es negativa (no para la compilacion: el .rbf sale igual)
       - name: Resumen de tiempos
         if: always()
         run: |
-          STA=output_files/TS2068.sta.rpt
+          STA=output_files/$REV.sta.rpt
           [ -f "$STA" ] || { echo "No hay informe de tiempos" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
           {
-            echo "## Tiempos (modelo lento)"
+            echo "## $REV - tiempos (modelo lento)"
             echo '```'
             for s in "Setup Summary" "Hold Summary" "Recovery Summary" "Removal Summary"; do
               echo "== $s"
@@ -72,7 +78,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           if sed -n '/Setup Summary/,/Removal Summary/p' "$STA" | grep -qE ';[[:space:]]*-[0-9]+\.[0-9]+[[:space:]]*;'; then
-            echo "::warning title=Tiempos::Hay holguras negativas: revisa TS2068.sta.rpt"
+            echo "::warning title=Tiempos::Hay holguras negativas: revisa $REV.sta.rpt"
           fi
 
       - name: Preparar el resultado
@@ -80,9 +86,9 @@ jobs:
         run: |
           mkdir -p dist
           DATE=$(date -u +%Y%m%d)
-          [ -f output_files/TS2068.rbf ] && cp output_files/TS2068.rbf "dist/TS2068_${DATE}.rbf"
+          [ -f output_files/$REV.rbf ] && cp output_files/$REV.rbf "dist/${REV}_${DATE}.rbf"
           for r in map fit sta flow asm; do
-            [ -f output_files/TS2068.$r.rpt ] && cp output_files/TS2068.$r.rpt dist/
+            [ -f output_files/$REV.$r.rpt ] && cp output_files/$REV.$r.rpt dist/
           done
           ls -la dist
 
@@ -90,7 +96,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: TS2068-${{ github.sha }}
+          name: ${{ env.REV }}-${{ github.sha }}
           path: dist/
           retention-days: 30
 
@@ -98,5 +104,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/TS2068_*.rbf
+          files: dist/${{ env.REV }}_*.rbf
           generate_release_notes: true
